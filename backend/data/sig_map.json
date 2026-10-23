@@ -1,0 +1,67 @@
+{
+  "OD": {
+    "slots": ["morning"],
+    "description": "Once daily",
+    "timing_anchor": "morning"
+  },
+  "BD": {
+    "slots": ["morning", "night"],
+    "description": "Twice daily",
+    "timing_anchor": "morning and night"
+  },
+  "TDS": {
+    "slots": ["morning", "afternoon", "night"],
+    "description": "Three times daily",
+    "timing_anchor": "morning, afternoon, night"
+  },
+  "TID": {
+    "slots": ["morning", "afternoon", "night"],
+    "description": "Three times daily",
+    "timing_anchor": "morning, afternoon, night"
+  },
+  "QID": {
+    "slots": ["morning", "afternoon", "evening", "night"],
+    "description": "Four times daily",
+    "timing_anchor": "four times spread throughout the day"
+  },
+  "HS": {
+    "slots": ["night"],
+    "description": "At bedtime",
+    "timing_anchor": "night (bedtime)"
+  },
+  "SOS": {
+    "slots": ["as_needed"],
+    "description": "As needed (when required)",
+    "timing_anchor": "as needed"
+  },
+  "PRN": {
+    "slots": ["as_needed"],
+    "description": "As needed",
+    "timing_anchor": "as needed"
+  },
+  "1-0-1": {
+    "slots": ["morning", "night"],
+    "description": "1 in morning, 1 at night",
+    "timing_anchor": "morning and night"
+  },
+  "1-0-0": {
+    "slots": ["morning"],
+    "description": "1 in morning",
+    "timing_anchor": "morning"
+  },
+  "0-1-0": {
+    "slots": ["afternoon"],
+    "description": "1 in afternoon",
+    "timing_anchor": "afternoon"
+  },
+  "0-0-1": {
+    "slots": ["night"],
+    "description": "1 at night",
+    "timing_anchor": "night"
+  },
+  "1-1-1": {
+    "slots": ["morning", "afternoon", "night"],
+    "description": "1 morning, 1 afternoon, 1 night",
+    "timing_anchor": "morning, afternoon, night"
+  }
+}

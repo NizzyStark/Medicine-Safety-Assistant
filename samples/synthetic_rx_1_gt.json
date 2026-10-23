@@ -1,0 +1,29 @@
+{
+  "language_detected": "en",
+  "medicines": [
+    {
+      "name": "Metformin",
+      "strength": "500mg",
+      "frequency_raw": "BD",
+      "duration": "30 days",
+      "instructions": "after meals",
+      "source_text": "1. Tab. Metformin 500mg 1 tab BD after meals x 30 days"
+    },
+    {
+      "name": "Atorvastatin",
+      "strength": "20mg",
+      "frequency_raw": "HS",
+      "duration": "30 days",
+      "instructions": "at bedtime",
+      "source_text": "2. Tab. Atorvastatin 20mg 1 tab HS (at bedtime) x 30 days"
+    },
+    {
+      "name": "Aspirin",
+      "strength": "75mg",
+      "frequency_raw": "OD",
+      "duration": "30 days",
+      "instructions": "after lunch",
+      "source_text": "3. Tab. Aspirin 75mg 1 tab OD after lunch x 30 days"
+    }
+  ]
+}
