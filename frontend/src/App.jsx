@@ -598,13 +598,6 @@ export default function App() {
                   onChange={(e) => setQaInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAskQuestion()}
                 />
-                <button
-                  className={`btn btn-mic ${isListening ? 'listening' : ''}`}
-                  type="button"
-                  onClick={startVoiceInput}
-                >
-                  {isListening ? t.listening : `🎤 ${t.speakQuestion}`}
-                </button>
                 <button className="btn btn-primary" onClick={() => handleAskQuestion()}>
                   {t.askBtn}
                 </button>
