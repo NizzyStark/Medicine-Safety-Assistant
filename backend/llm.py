@@ -33,8 +33,8 @@ def generate(
     Uses Gemma 4 models only, with an automatic Gemma fallback if the primary model is unavailable.
     """
     client = get_client()
-    primary_model = model or os.environ.get("GEMMA_MODEL", "gemma-4-31b-it")
-    fallback_model = "gemma-4-26b-a4b-it"
+    primary_model = model or os.environ.get("GEMMA_MODEL", "gemma-4-26b-a4b-it")
+    fallback_model = "gemma-4-31b-it"
 
     # Gemma models only, preserving order without duplicate
     candidate_models = [primary_model]
