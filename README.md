@@ -1,66 +1,95 @@
-# Medicine Safety Assistant — Implementation Plan
+# MedSafe: Medicine Safety Assistant
 
-Built with **Gemma 4 via the Gemini API** (API key), developed in **Google Antigravity**.
+A private-by-design assistant that helps elderly patients and caregivers understand handwritten prescriptions and pill packaging. Take a photo, confirm what was read, get a simple daily schedule explained by voice in your own language, and see possible conflicts to check with a doctor or pharmacist.
 
-> Purpose: help elderly patients and caregivers understand handwritten prescriptions and pill packaging, get a simple daily schedule explained by voice in their own language, and see possible conflicts to check with a doctor or pharmacist.
-> Scope: decision support and education only. **Not diagnosis or treatment.** Synthetic or public data only.
+Built with **Gemma 4** through the **Gemini API**.
+
+> **Disclaimer:** MedSafe is an educational decision-support tool. It does not diagnose, prescribe, or advise changing any dose. Always confirm with your doctor or pharmacist. Use synthetic or public data only; do not upload real patient records.
 
 ---
 
-## 1. Key decisions
+## The problem
 
-| Topic | Decision |
+Many people, especially elderly patients and their caregivers, manage several medicines from handwritten prescriptions and unlabeled strips, often in languages and jargon they do not fully understand. Mistakes in dose, timing, and combinations are common and can be dangerous. Basic OCR struggles with handwriting and mixed-language text, and most apps assume typed input in English.
+
+## What MedSafe does
+
+1. **Reads** a prescription or pill strip from a photo (Gemma 4 multimodal input).
+2. **Shows its work:** the photo appears beside the extracted text, and uncertain fields must be confirmed by a human.
+3. **Builds a daily schedule** (Morning / Afternoon / Night) using deterministic code, not model guesses.
+4. **Explains in the patient's language** with short, plain sentences and spoken playback.
+5. **Flags possible conflicts** from a small, sourced local database, always worded as "check with your pharmacist or doctor."
+6. **Cross-checks** pill strips against the prescription to catch mismatches in strength or name.
+
+## What makes it different
+
+- **Verify before trust:** low-confidence fields are highlighted and must be confirmed before anything downstream runs.
+- **Source-cited output:** every instruction shows the exact text it came from.
+- **Deterministic safety layer:** scheduling and interaction checks run in code against a sourced database. The model explains results but never originates a warning.
+- **Honest uncertainty:** unclear text produces "ask your pharmacist," not a guess.
+- **Voice-first and caregiver-friendly:** large buttons, high contrast, spoken explanations.
+
+---
+
+## Architecture
+
+```
+Photo -> Preprocess -> Gemma 4: extract (JSON + confidence + source text)
+      -> Verify screen (human confirms)
+      -> Code: normalize frequency -> schedule -> interaction check (local DB)
+      -> Gemma 4: explain in patient's language -> voice playback / Q&A
+```
+
+All model calls go through `backend/llm.py`, so the model backend can be swapped later (for example, a local model for fully offline use) without changing the rest of the app.
+
+## Tech stack
+
+| Layer | Tools |
 |---|---|
-| Model access | Gemini API key, Gemma 4 hosted models (e.g. `gemma-4-31b-it` or `gemma-4-26b-a4b-it`; confirm current IDs in Google AI Studio) |
-| SDK | `google-genai` (Python) |
-| Offline | Not for now. Keep all model calls behind one `llm.py` module so a local backend can be added later without touching the rest |
-| Voice | Browser Web Speech API (`SpeechRecognition` + `speechSynthesis`) by default. Try Gemma audio input only if the hosted model supports it |
-| Core rule | **The model reads and explains. Code does scheduling, dose-timing logic, and interaction lookups.** |
+| Model | Gemma 4 via Gemini API (`google-genai`) |
+| Backend | Python, FastAPI, Pydantic, SQLite |
+| Image prep | Pillow, OpenCV |
+| Frontend | React + Vite PWA (camera capture, voice buttons) |
+| Voice | Browser Web Speech API (speech recognition and synthesis) |
 
----
-
-## 2. Architecture
-
-```
-Photo -> Preprocess (OpenCV/Pillow)
-      -> Gemma 4: extract -> JSON (+ confidence + verbatim source text)
-      -> Verify screen (photo beside editable fields; caregiver confirms)
-      -> Deterministic code: normalize frequency -> build schedule -> check interactions (local DB)
-      -> Gemma 4: explain in patient's language -> TTS voice -> voice Q&A
-```
-
-### Project structure
+## Project structure
 
 ```
 medsafe/
-  AGENTS.md                # project rules for Antigravity (see section 8)
-  .env                     # GEMINI_API_KEY=...  (never commit)
-  .gitignore
+  AGENTS.md              # project rules for AI coding agents
   backend/
-    main.py                # FastAPI app
-    llm.py                 # all Gemma calls live here
-    schemas.py             # pydantic models
-    preprocess.py          # image cleanup
-    extract.py             # prescription + strip extraction
-    schedule.py            # frequency normalization + daily schedule
-    interactions.py        # local interaction lookup
-    explain.py             # plain-language explanation + Q&A
-    data/
-      sig_map.json         # OD, BD, TDS, QID, HS, SOS, AC, PC ... -> times
-      interactions.db      # small curated SQLite DB with sources
+    main.py              # FastAPI app
+    llm.py               # all Gemma calls
+    schemas.py           # data models
+    preprocess.py        # image cleanup
+    extract.py           # prescription and strip extraction
+    schedule.py          # frequency normalization, daily schedule
+    interactions.py      # local interaction lookup
+    explain.py           # plain-language explanation and Q&A
+    data/                # sig_map.json, interactions.db
     tests/
-  frontend/                # React + Vite PWA (or plain HTML)
-  samples/                 # synthetic prescriptions and strips
-  eval/
-    run_eval.py            # field-level accuracy on samples
+  frontend/              # React + Vite app
+  samples/               # synthetic prescriptions and strips
+  eval/run_eval.py       # field-level accuracy on samples
 ```
 
----
+## Getting started
 
-## 3. Setup
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+
+### Setup
 
 ```bash
-pip install google-genai fastapi uvicorn pillow opencv-python pydantic python-dotenv pytest
+git clone https://github.com/<username>/<repo>.git
+cd <repo>
+
+# Backend
+cd backend
+pip install -r requirements.txt
+cp .env.example .env     # then add your key
 ```
 
 `.env`:
@@ -69,174 +98,70 @@ GEMINI_API_KEY=your_key_here
 GEMMA_MODEL=gemma-4-31b-it
 ```
 
-- Load the key only on the backend. Never expose it to the browser.
-- Add `.env` to `.gitignore` before the first commit.
+> Check Google AI Studio for the current Gemma 4 model IDs and set `GEMMA_MODEL` accordingly. **Never commit `.env`.**
 
----
+### Run
 
-## 4. Phases
+```bash
+# Backend
+uvicorn main:app --reload
 
-### Phase 0: Foundations (about 1 hour)
-- [ ] Create the repo and folders above
-- [ ] Write `AGENTS.md` (section 8) so every Antigravity agent follows the same rules
-- [ ] Build `samples/`: 10-15 **synthetic** images (typed, handwritten, mixed-language prescriptions; pill strips). No real patient data.
-- [ ] Smoke test: one image sent to Gemma 4 and a text reply printed
-
-### Phase 1: Extraction (most important)
-- [ ] `llm.py`: one function `generate(parts, system, json_schema=None)`
-- [ ] `schemas.py`: pydantic model for the extraction result
-- [ ] `extract.py`: prompt + call + parse + validate, with one retry on invalid JSON
-- [ ] `eval/run_eval.py`: compare output with ground-truth JSON for each sample, report field-level error rate
-
-Extraction schema:
-
-```json
-{
-  "language_detected": "",
-  "medicines": [
-    {
-      "name": "",
-      "strength": "",
-      "frequency_raw": "",
-      "duration": "",
-      "instructions": "",
-      "source_text": "",
-      "confidence": 0.0
-    }
-  ],
-  "unreadable_regions": []
-}
+# Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-Extraction prompt rules:
-- Transcribe exactly what is written. Copy `source_text` verbatim.
-- If a field is unclear, set it to `null` and give a low `confidence`.
-- Never infer or "correct" a dose or drug name.
-- Output JSON only.
+Open the local URL shown by Vite. For camera testing, use a real phone on the same network.
 
-Call sketch (parse and validate defensively; do not assume JSON mode is available on the hosted model):
+### Test and evaluate
 
-```python
-from google import genai
-from PIL import Image
-import os, json
-
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-
-def extract(image_path: str, prompt: str) -> dict:
-    img = Image.open(image_path)
-    resp = client.models.generate_content(
-        model=os.environ.get("GEMMA_MODEL", "gemma-4-31b-it"),
-        contents=[img, prompt],
-    )
-    text = resp.text.strip().removeprefix("```json").removesuffix("```").strip()
-    return json.loads(text)   # validate with pydantic; retry once on failure
+```bash
+pytest backend/tests
+python eval/run_eval.py     # field-level accuracy on samples/
 ```
 
-### Phase 2: Verify screen (safety differentiator)
-- [ ] Show the photo beside the extracted fields
-- [ ] Highlight any field with `confidence` below a threshold (start at 0.8) or `null`
-- [ ] User must confirm or edit highlighted fields before continuing
-- [ ] Nothing downstream runs on unconfirmed data
-
-### Phase 3: Schedule and interactions (deterministic code)
-- [ ] `sig_map.json`: map abbreviations (OD, BD, TDS, QID, HS, SOS, AC, PC, and regional variants) to times and meal anchors
-- [ ] `schedule.py`: confirmed medicines -> Morning / Afternoon / Evening / Night slots, with meal-relation flags
-- [ ] `interactions.py`: lookup over a small curated SQLite table built from public sources; each row stores its source
-- [ ] Output wording is always "possible conflict, check with your pharmacist or doctor", never "stop taking"
-- [ ] Gemma may *explain* a flagged conflict but must never *originate* one
-- [ ] Unit tests for schedule and interaction logic
-
-### Phase 3b: Pill strips
-- [ ] Packaging prompt: name, strength, expiry, batch
-- [ ] Cross-check against the confirmed prescription: flag mismatches (e.g. strip 500 mg vs prescription 250 mg)
-
-### Phase 4: Language and voice
-- [ ] Detect the patient's language (from extraction or user selection)
-- [ ] `explain.py`: short plain-language explanation per medicine (what it is for, when, with or without food), in the patient's language
-- [ ] Frontend: "Play aloud" using `speechSynthesis`; "Ask a question" using `SpeechRecognition`
-- [ ] Q&A prompt restricted to the confirmed medicine list; anything outside it gets "please ask your doctor or pharmacist"
-- [ ] Test at least 2 languages, including one mixed-language prescription
-
-### Phase 5: Caregiver and elder UX
-- [ ] Large buttons, high contrast, one action per screen
-- [ ] Daily schedule cards (Morning / Afternoon / Night) with a play button
-- [ ] Caregiver summary view (printable or exportable)
-
-### Phase 6: Polish and demo
-- [ ] Run the eval script, record the accuracy numbers
-- [ ] Test the camera flow on a real phone
-- [ ] Record the demo (section 7)
-- [ ] README with setup, architecture diagram, safety design, limitations
-
 ---
 
-## 5. Differentiators (build these in, mention them in the pitch)
+## Safety design
 
-1. **Verify-before-trust:** photo beside extracted text, low-confidence fields forced to human confirmation.
-2. **Source-cited output:** every instruction shows the verbatim text it came from; if absent, the app says so.
-3. **Deterministic safety layer:** scheduling and interaction checks in code and a sourced local DB, not model memory.
-4. **Prescription + strip cross-check:** catches mismatches between what was prescribed and what is in the pack.
-5. **Local-language, voice-first, caregiver-friendly UX.**
-6. **Honest uncertainty:** "unclear, ask your pharmacist" instead of guessing.
+- No diagnosis; no advice to change, skip, or stop a dose.
+- Every result screen reminds the user to confirm with a doctor or pharmacist.
+- Confidence below the threshold means the user is asked, never guessed for.
+- Interaction warnings come only from the local database and show their source.
+- Synthetic or public data only. Images and extracted text are not logged to third parties by this app's code.
 
----
+> Note: while using the Gemini API, images and text are sent to a hosted model. Fully offline operation requires a local model backend, which is planned (see Roadmap).
 
-## 6. Safety rules
+## Limitations
 
-- No diagnosis. No advice to change, skip, or stop a dose.
-- Every result screen ends with: *"Please confirm with your doctor or pharmacist."*
-- Below-threshold confidence means ask the user, never guess.
-- No real patient data in the repo, samples, or demo.
-- Do not log images or extracted text to external services.
+- Handwriting recognition is imperfect; results depend on image quality and the writer.
+- The interaction database is small and illustrative, not a clinical resource.
+- Language and voice quality depend on the model and the browser's speech support.
+- Not a medical device and not a substitute for professional advice.
 
----
+## Roadmap
 
-## 7. Demo script (about 3 minutes)
+- [ ] Local model backend (Ollama or on-device Gemma 4) for true offline use
+- [ ] Larger, properly sourced interaction database
+- [ ] More languages and regional handwriting samples
+- [ ] Printable or exportable caregiver summary
 
-1. Elder or caregiver photographs a handwritten prescription.
-2. App flags one unclear field. The caregiver corrects it on the verify screen.
-3. Daily schedule appears (Morning / Afternoon / Night).
-4. Spoken explanation plays in the local language.
-5. A pill strip is scanned and a mismatch is flagged.
-6. A possible interaction is shown with its source and a "check with your pharmacist" note.
-7. Closing slide: eval accuracy numbers and the safety design.
+## Evaluation results
 
----
+_Add your numbers here after running `eval/run_eval.py`:_
 
-## 8. `AGENTS.md` (paste into the repo root for Antigravity)
+| Sample type | Fields | Correct | Flagged for review |
+|---|---|---|---|
+| Typed prescriptions | | | |
+| Handwritten prescriptions | | | |
+| Mixed-language | | | |
+| Pill strips | | | |
 
-```markdown
-# Project rules
+## License
 
-- Project: medicine safety assistant. Decision support only; never diagnose or advise dose changes.
-- All model calls go through backend/llm.py. Read GEMINI_API_KEY from the environment. Never hardcode keys or expose them to the frontend.
-- The model extracts and explains. Scheduling, dose timing, and interaction checks are deterministic code with unit tests.
-- Every extracted field must include source_text and confidence. If unsure, return null and a low confidence. Never guess a drug name or dose.
-- Nothing downstream may run on unconfirmed extraction results.
-- Interaction results come only from the local DB, with a source shown. Wording: "possible conflict, check with your pharmacist or doctor."
-- Use synthetic or public data only. Do not commit real patient data.
-- Run pytest and eval/run_eval.py after any prompt or logic change and report results.
-- Keep code small and readable. Add or update tests with every change.
-```
+Choose a license (for example MIT) and add a `LICENSE` file.
 
-### Suggested agent split in Antigravity
-- **Agent A:** `llm.py`, `extract.py`, `schemas.py`, `eval/run_eval.py`
-- **Agent B:** `schedule.py`, `sig_map.json`, `interactions.py`, tests
-- **Agent C:** frontend (camera capture, verify screen, schedule cards, voice buttons)
-- Review each agent's plan and diff before merging. Test the final UI on a real phone.
+## Acknowledgments
 
----
-
-## 9. Minimum viable version (if time is short)
-
-**Keep:** extraction, verify screen, schedule, one language with voice, 3-5 interaction rules, eval numbers.
-**Drop first:** pill strips, extra languages, PDF export.
-
----
-
-## 10. Later (not now)
-
-- Add a local model backend (Ollama or on-device Gemma 4) behind `llm.py` for true offline use.
-- Larger, properly sourced interaction database.
-- More languages and regional handwriting samples.
+Built for the "Best Use of Gemma 4" track. Thanks to Google for the Gemma 4 open model and Gemini API.
