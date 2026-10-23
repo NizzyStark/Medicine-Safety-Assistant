@@ -289,14 +289,6 @@ export default function App() {
               </div>
             </div>
             <div className="control-block">
-              <div className="control-label" id="size-label">{t.textSizeLabel}</div>
-              <div className="seg-group" role="group" aria-labelledby="size-label">
-                <button type="button" className={`seg-btn ${textSize === 'comfortable' ? 'active' : ''}`} onClick={() => setTextSize('comfortable')} aria-pressed={textSize === 'comfortable'}>{t.textComfortable}</button>
-                <button type="button" className={`seg-btn ${textSize === 'large' ? 'active' : ''}`} onClick={() => setTextSize('large')} aria-pressed={textSize === 'large'}>{t.textLarge}</button>
-                <button type="button" className={`seg-btn ${textSize === 'xl' ? 'active' : ''}`} onClick={() => setTextSize('xl')} aria-pressed={textSize === 'xl'}>{t.textXl}</button>
-              </div>
-            </div>
-            <div className="control-block">
               <div className="control-label" id="contrast-label">{t.contrastLabel}</div>
               <div className="seg-group" role="group" aria-labelledby="contrast-label">
                 <button type="button" className={`seg-btn ${!highContrast ? 'active' : ''}`} onClick={() => setHighContrast(false)} aria-pressed={!highContrast}>{t.contrastOff}</button>
